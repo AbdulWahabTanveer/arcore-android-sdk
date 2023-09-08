@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
+
 /** Renders an AugmentedFace on screen in OpenGL. */
 public class AugmentedFaceRenderer {
   private static final String TAG = AugmentedFaceRenderer.class.getSimpleName();
@@ -66,9 +67,19 @@ public class AugmentedFaceRenderer {
   private final float[] modelViewMat = new float[16];
   private final float[] viewLightDirection = new float[4];
 
+
+  private GlassesRenderer glassesRenderer;
+
+
   public AugmentedFaceRenderer() {}
 
   public void createOnGlThread(Context context, String diffuseTextureAssetName) throws IOException {
+
+
+    glassesRenderer = new GlassesRenderer();
+    glassesRenderer.createOnGlThread(context, "models/nose.obj");
+
+
     final int vertexShader =
         loadGLShader(TAG, context, GLES20.GL_VERTEX_SHADER, VERTEX_SHADER_NAME);
     final int fragmentShader =
@@ -118,6 +129,7 @@ public class AugmentedFaceRenderer {
       float[] modelmtx,
       float[] colorCorrectionRgba,
       AugmentedFace face) {
+
     FloatBuffer vertices = face.getMeshVertices();
     FloatBuffer normals = face.getMeshNormals();
     FloatBuffer textureCoords = face.getMeshTextureCoordinates();
@@ -174,6 +186,8 @@ public class AugmentedFaceRenderer {
 
     GLES20.glUseProgram(0);
     GLES20.glDepthMask(true);
+//    glassesRenderer.draw(projmtx, viewmtx, face);
+
   }
 
   public void setMaterialProperties(
@@ -190,4 +204,32 @@ public class AugmentedFaceRenderer {
     v[1] *= reciprocalLength;
     v[2] *= reciprocalLength;
   }
+
+  private float[] computeGlassesModelMatrix(float[] leftEyePosition, float[] rightEyePosition) {
+    float[] glassesModelMatrix = new float[16];
+
+    // 1. Compute the center position
+    float[] centerPosition = {
+            (leftEyePosition[0] + rightEyePosition[0]) / 2,
+            (leftEyePosition[1] + rightEyePosition[1]) / 2,
+            (leftEyePosition[2] + rightEyePosition[2]) / 2
+    };
+
+    // 2. Compute the scale (this is a placeholder, you might need to adjust this)
+    float scale = 1.0f; // Adjust this value based on the size of your glasses model
+
+    // 3. Compute the rotation (this is a simple version, might need more complex calculations)
+    float dx = rightEyePosition[0] - leftEyePosition[0];
+    float dy = rightEyePosition[1] - leftEyePosition[1];
+    float rotationAngle = (float) Math.atan2(dy, dx);
+
+    // Build the model matrix
+    Matrix.setIdentityM(glassesModelMatrix, 0);
+    Matrix.translateM(glassesModelMatrix, 0, centerPosition[0], centerPosition[1], centerPosition[2]);
+    Matrix.rotateM(glassesModelMatrix, 0, rotationAngle, 0, 0, 1); // Rotate around the Z-axis
+    Matrix.scaleM(glassesModelMatrix, 0, scale, scale, scale);
+
+    return glassesModelMatrix;
+  }
+
 }
